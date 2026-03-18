@@ -13,7 +13,7 @@ const route = useRoute()
 interface DriverWithRelations extends Driver {
   users: User
   buses: Bus | null
-}
+}   
 
 const drivers = ref<DriverWithRelations[]>([])
 const buses = ref<Bus[]>([])
