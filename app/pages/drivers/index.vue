@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, Plus, UserPlus, Bus as BusIcon, Calendar, AlertTriangle, Eye } from 'lucide-vue-next'
+import { Search, Plus, UserPlus, Bus as BusIcon, Calendar, AlertTriangle, Eye, Edit } from 'lucide-vue-next'
 import { formatDateOnly } from '~/lib/utils'
 import type { Driver, User, Bus } from '~/types'
 
@@ -25,8 +25,17 @@ const showAddDialog = ref(false)
 const showConvertDialog = ref(false)
 const showAssignBusDialog = ref(false)
 const showLicenseImageDialog = ref(false)
+const showEditDialog = ref(false)
 const selectedDriver = ref<DriverWithRelations | null>(null)
 const selectedLicenseImage = ref<string | null>(null)
+
+const editForm = ref({
+  full_name: '',
+  email: '',
+  phone_number: '',
+  license_number: '',
+  license_expiry: ''
+})
 
 const newDriver = ref({
   passenger_id: '',
@@ -131,6 +140,56 @@ const openLicenseImageDialog = (driver: DriverWithRelations) => {
   selectedDriver.value = driver
   selectedLicenseImage.value = driver.license_image_url || null
   showLicenseImageDialog.value = true
+}
+
+const openEditDialog = (driver: DriverWithRelations) => {
+  selectedDriver.value = driver
+  editForm.value = {
+    full_name: driver.users?.full_name || driver.full_name || '',
+    email: driver.users?.email || '',
+    phone_number: driver.users?.phone_number || '',
+    license_number: driver.driver_license_number || '',
+    license_expiry: driver.license_expiry_date || ''
+  }
+  showEditDialog.value = true
+}
+
+const updateDriver = async () => {
+  if (!selectedDriver.value) return
+  
+  actionLoading.value = true
+  try {
+    // Update user info
+    const { error: userError } = await supabase
+      .from('users')
+      .update({
+        full_name: editForm.value.full_name.trim(),
+        email: editForm.value.email.toLowerCase().trim(),
+        phone_number: editForm.value.phone_number.trim() || null
+      })
+      .eq('id', selectedDriver.value.id)
+    
+    if (userError) throw userError
+    
+    // Update driver info
+    const { error: driverError } = await supabase
+      .from('drivers')
+      .update({
+        full_name: editForm.value.full_name.trim(),
+        driver_license_number: editForm.value.license_number.trim(),
+        license_expiry_date: editForm.value.license_expiry
+      })
+      .eq('id', selectedDriver.value.id)
+    
+    if (driverError) throw driverError
+    
+    showEditDialog.value = false
+    await fetchDrivers()
+  } catch (error) {
+    console.error('Error updating driver:', error)
+  } finally {
+    actionLoading.value = false
+  }
 }
 
 const assignBus = async () => {
@@ -277,6 +336,9 @@ onMounted(() => {
                 >
                   <Eye class="h-4 w-4" />
                 </UiButton>
+                <UiButton variant="ghost" size="sm" @click="openEditDialog(driver)" title="Edit Driver">
+                  <Edit class="h-4 w-4" />
+                </UiButton>
                 <UiButton variant="outline" size="sm" @click="openAssignBusDialog(driver)">
                   <BusIcon class="h-4 w-4 mr-1" />
                   {{ driver.buses ? 'Change Bus' : 'Assign Bus' }}
@@ -352,6 +414,68 @@ onMounted(() => {
           <UiButton variant="outline" @click="showAssignBusDialog = false">Cancel</UiButton>
           <UiButton :disabled="actionLoading" @click="assignBus">
             {{ actionLoading ? 'Saving...' : 'Save Assignment' }}
+          </UiButton>
+        </div>
+      </div>
+    </UiDialog>
+
+    <!-- Edit Driver Dialog -->
+    <UiDialog :open="showEditDialog" title="Edit Driver Information" @close="showEditDialog = false">
+      <div class="space-y-4">
+        <div v-if="selectedDriver">
+          <p class="text-sm text-gray-500 mb-4">
+            Editing driver: <strong>{{ selectedDriver.users?.full_name || selectedDriver.full_name }}</strong>
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+          <UiInput
+            v-model="editForm.full_name"
+            placeholder="Enter full name"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <UiInput
+            v-model="editForm.email"
+            type="email"
+            placeholder="Enter email"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
+          <UiInput
+            v-model="editForm.phone_number"
+            placeholder="Enter phone number"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">License Number</label>
+          <UiInput
+            v-model="editForm.license_number"
+            placeholder="Enter license number"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">License Expiry Date</label>
+          <UiInput
+            v-model="editForm.license_expiry"
+            type="date"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4">
+          <UiButton variant="outline" @click="showEditDialog = false">Cancel</UiButton>
+          <UiButton
+            :disabled="!editForm.full_name || !editForm.email || !editForm.license_number || !editForm.license_expiry || actionLoading"
+            @click="updateDriver"
+          >
+            {{ actionLoading ? 'Saving...' : 'Save Changes' }}
           </UiButton>
         </div>
       </div>
