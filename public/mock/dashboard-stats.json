@@ -1,0 +1,58 @@
+{
+  "stats": {
+    "totalUsers": 1280,
+    "totalDrivers": 84,
+    "totalBuses": 46,
+    "totalCards": 915,
+    "totalTransactions": 6482,
+    "totalRevenue": 186250.75,
+    "activeTrips": 6
+  },
+  "trends": {
+    "totalUsers": "+8.4%",
+    "totalDrivers": "+4.1%",
+    "totalBuses": "+2.6%",
+    "totalCards": "+11.8%",
+    "totalTransactions": "+18.2%",
+    "totalRevenue": "+13.5%",
+    "activeTrips": "+3.0%"
+  },
+  "activeTrips": [
+    {
+      "id": "trip-001",
+      "busNumber": "BUS-003",
+      "routeName": "Southbound - Divisoria",
+      "driverName": "Ramon Perez",
+      "location": "España Blvd.",
+      "startedAt": "2026-03-22T01:12:00.000Z",
+      "href": "/live-map"
+    },
+    {
+      "id": "trip-002",
+      "busNumber": "BUS-014",
+      "routeName": "Northbound - Fairview",
+      "driverName": "Mika Santos",
+      "location": "Welcome Rotonda",
+      "startedAt": "2026-03-22T01:22:00.000Z",
+      "href": "/live-map"
+    },
+    {
+      "id": "trip-003",
+      "busNumber": "BUS-021",
+      "routeName": "Caloocan Loop",
+      "driverName": "Jorge Cruz",
+      "location": "5th Avenue",
+      "startedAt": "2026-03-22T01:31:00.000Z",
+      "href": "/live-map"
+    },
+    {
+      "id": "trip-004",
+      "busNumber": "BUS-009",
+      "routeName": "Quezon Avenue Shuttle",
+      "driverName": "Althea Dizon",
+      "location": "Quezon Avenue Station",
+      "startedAt": "2026-03-22T01:40:00.000Z",
+      "href": "/live-map"
+    }
+  ]
+}

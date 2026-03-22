@@ -8,6 +8,7 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const route = useRoute()
+const { insights, pending: insightsLoading, refresh: refreshInsights } = useBusDispatchInsights()
 
 const buses = ref<Bus[]>([])
 const loading = ref(true)
@@ -79,7 +80,7 @@ const createBus = async () => {
     if (error) throw error
 
     showAddDialog.value = false
-    await fetchBuses()
+    await Promise.all([fetchBuses(), refreshInsights()])
   } catch (error) {
     console.error('Error creating bus:', error)
   } finally {
@@ -120,7 +121,7 @@ const updateBus = async () => {
     if (error) throw error
 
     showEditDialog.value = false
-    await fetchBuses()
+    await Promise.all([fetchBuses(), refreshInsights()])
   } catch (error) {
     console.error('Error updating bus:', error)
   } finally {
@@ -138,7 +139,7 @@ const deleteBus = async (bus: Bus) => {
       .eq('id', bus.id)
 
     if (error) throw error
-    await fetchBuses()
+    await Promise.all([fetchBuses(), refreshInsights()])
   } catch (error) {
     console.error('Error deleting bus:', error)
   }
@@ -182,6 +183,32 @@ onMounted(() => {
         <Plus class="h-4 w-4 mr-2" />
         Add Bus
       </UiButton>
+    </div>
+
+    <div class="mb-6">
+      <SmartRecommendationBanner
+        :recommendation="insights.recommendation"
+        :loading="insightsLoading"
+      />
+    </div>
+
+    <div class="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-5">
+      <div class="xl:col-span-2">
+        <FleetUtilizationChart
+          :data="insights.charts.utilization"
+          :loading="insightsLoading"
+        />
+      </div>
+      <div class="xl:col-span-3">
+        <RevenuePerBusChart
+          :points="insights.charts.revenuePerBus"
+          :loading="insightsLoading"
+        />
+      </div>
+    </div>
+
+    <div v-if="!insightsLoading && !insights.maintenanceLogsAvailable" class="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      Maintenance diagnostics are currently based on scheduling and trip history because the `maintenance_logs` table is not available in the active schema.
     </div>
 
     <!-- Search -->

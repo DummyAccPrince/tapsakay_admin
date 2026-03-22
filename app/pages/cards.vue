@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, Plus, CreditCard, Ban, CheckCircle } from 'lucide-vue-next'
+import { Search, Plus, CreditCard, Ban, CheckCircle, AlertTriangle, Wallet } from 'lucide-vue-next'
 import { formatCurrency, formatDate } from '~/lib/utils'
 import type { NfcCard, User } from '~/types'
 
@@ -9,6 +9,7 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const route = useRoute()
+const { audit, pending: auditLoading, refresh: refreshAudit } = useCardFinancialAudit()
 
 interface CardWithOwner extends NfcCard {
   users: User | null
@@ -109,7 +110,7 @@ const createCard = async () => {
     if (error) throw error
 
     showAddDialog.value = false
-    await fetchCards()
+    await Promise.all([fetchCards(), refreshAudit()])
   } catch (error) {
     console.error('Error creating card:', error)
   } finally {
@@ -133,13 +134,25 @@ const toggleCardStatus = async (card: CardWithOwner) => {
 
 const toggleCardBlock = async (card: CardWithOwner) => {
   try {
+    const isHighValueAsset = audit.value.highValueAssets.some(asset => asset.id === card.id)
+
+    if (!card.is_blocked && isHighValueAsset) {
+      const confirmed = confirm(
+        `High Value Asset detected for ${card.card_number} with balance ${formatCurrency(Number(card.balance))}.\n\nSuggested control: require two-factor confirmation before blocking.\n\nType-safe fallback: confirm this action manually now.`
+      )
+
+      if (!confirmed) {
+        return
+      }
+    }
+
     const { error } = await supabase
       .from('nfc_cards')
       .update({ is_blocked: !card.is_blocked })
       .eq('id', card.id)
 
     if (error) throw error
-    await fetchCards()
+    await Promise.all([fetchCards(), refreshAudit()])
   } catch (error) {
     console.error('Error updating card block status:', error)
   }
@@ -183,6 +196,95 @@ onMounted(() => {
         <Plus class="h-4 w-4 mr-2" />
         Create Card
       </UiButton>
+    </div>
+
+    <div v-if="audit.recommendations.toastMessage" class="mb-6 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-orange-50 to-white p-4 shadow-[0_8px_24px_-12px_rgba(245,158,11,0.35)]">
+      <div class="flex items-start gap-3">
+        <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 ring-1 ring-amber-200">
+          <AlertTriangle class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Low-Balance Alert</p>
+          <p class="mt-1 text-sm leading-6 text-slate-700">{{ audit.recommendations.toastMessage }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-5">
+      <div class="xl:col-span-2">
+        <CardTypePieChart :points="audit.charts.cardTypeDistribution" :loading="auditLoading" />
+      </div>
+      <div class="xl:col-span-3">
+        <DiscountBalanceBarChart :points="audit.charts.balanceByDiscount" :loading="auditLoading" />
+      </div>
+    </div>
+
+    <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]">
+        <div class="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Dormant Capital</h2>
+            <p class="mt-1 text-sm text-slate-500">Reloadable cards unused for 30 days with balances above ₱100.</p>
+          </div>
+          <div class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
+            {{ audit.dormantCapital.length }} flagged
+          </div>
+        </div>
+
+        <div v-if="auditLoading" class="space-y-3 animate-pulse">
+          <div v-for="i in 3" :key="i" class="h-12 rounded-xl bg-slate-100"></div>
+        </div>
+        <div v-else-if="audit.dormantCapital.length === 0" class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          No dormant capital cards detected.
+        </div>
+        <div v-else class="space-y-3">
+          <div v-for="card in audit.dormantCapital.slice(0, 5)" :key="card.id" class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+            <div>
+              <p class="font-medium text-slate-900">{{ card.cardNumber }}</p>
+              <p class="text-xs text-slate-500">{{ card.ownerName || 'Unassigned owner' }}</p>
+            </div>
+            <div class="text-right">
+              <p class="font-semibold text-slate-900">{{ formatCurrency(card.balance) }}</p>
+              <p class="text-xs text-slate-500">
+                {{ card.lastUsedAt ? `Last used ${formatDate(card.lastUsedAt)}` : 'Never used' }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]">
+        <div class="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">High Value Assets</h2>
+            <p class="mt-1 text-sm text-slate-500">Cards above ₱5,000 should use stronger controls before blocking.</p>
+          </div>
+          <div class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-100">
+            {{ audit.highValueAssets.length }} high value
+          </div>
+        </div>
+
+        <div v-if="auditLoading" class="space-y-3 animate-pulse">
+          <div v-for="i in 2" :key="i" class="h-12 rounded-xl bg-slate-100"></div>
+        </div>
+        <div v-else-if="audit.highValueAssets.length === 0" class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+          No high value asset cards detected.
+        </div>
+        <div v-else class="space-y-3">
+          <div v-for="asset in audit.highValueAssets" :key="asset.id" class="flex items-center justify-between gap-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700 ring-1 ring-rose-200">
+                <Wallet class="h-5 w-5" />
+              </div>
+              <div>
+                <p class="font-medium text-slate-900">{{ asset.cardNumber }}</p>
+                <p class="text-xs text-slate-500">{{ asset.ownerName || 'Unassigned owner' }}</p>
+              </div>
+            </div>
+            <p class="font-semibold text-rose-700">{{ formatCurrency(asset.balance) }}</p>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- Search -->
@@ -249,6 +351,9 @@ onMounted(() => {
                 </UiBadge>
                 <UiBadge v-if="card.is_blocked" variant="destructive" class="w-fit">
                   Blocked
+                </UiBadge>
+                <UiBadge v-if="audit.highValueAssets.some(asset => asset.id === card.id)" variant="warning" class="w-fit">
+                  High Value Asset
                 </UiBadge>
               </div>
             </td>

@@ -13,7 +13,7 @@ const route = useRoute()
 interface DriverWithRelations extends Driver {
   users: User
   buses: Bus | null
-}   
+}
 
 const drivers = ref<DriverWithRelations[]>([])
 const buses = ref<Bus[]>([])
@@ -244,111 +244,55 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">Drivers</h1>
-        <p class="text-gray-500 mt-1">Manage driver accounts and assignments</p>
-      </div>
-      <div class="flex gap-2">
-        <UiButton @click="$router.push('/drivers/create')">
-          <Plus class="h-4 w-4 mr-2" />
-          Create New Driver
-        </UiButton>
-        <UiButton variant="outline" @click="openConvertDialog">
-          <UserPlus class="h-4 w-4 mr-2" />
-          Convert Passenger
-        </UiButton>
+    <!-- Header with Improved Action Hierarchy -->
+    <div class="mb-8">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Drivers</h1>
+          <p class="mt-1.5 text-sm text-slate-600">Manage driver accounts, licenses, and bus assignments</p>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Secondary Action -->
+          <UiButton 
+            variant="outline" 
+            @click="openConvertDialog"
+            class="border-slate-300 text-slate-700 hover:bg-slate-50"
+          >
+            <UserPlus class="h-4 w-4 mr-2" />
+            Convert Passenger
+          </UiButton>
+          
+          <!-- Primary Action -->
+          <UiButton 
+            @click="$router.push('/drivers/create')"
+            class="bg-blue-600 hover:bg-blue-700 shadow-sm"
+          >
+            <Plus class="h-4 w-4 mr-2" />
+            Create New Driver
+          </UiButton>
+        </div>
       </div>
     </div>
 
     <!-- Search -->
     <div class="relative mb-6">
-      <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
       <UiInput
         v-model="searchQuery"
-        placeholder="Search drivers..."
+        placeholder="Search by name, email, or license number..."
         class="pl-10 max-w-md"
       />
     </div>
 
-    <!-- Drivers Table -->
-    <UiCard>
-      <UiTable>
-        <thead>
-          <tr class="border-b">
-            <th class="text-left p-4 font-medium text-gray-500">Driver</th>
-            <th class="text-left p-4 font-medium text-gray-500">License</th>
-            <th class="text-left p-4 font-medium text-gray-500">License Expiry</th>
-            <th class="text-left p-4 font-medium text-gray-500">Assigned Bus</th>
-            <th class="text-left p-4 font-medium text-gray-500">Status</th>
-            <th class="text-right p-4 font-medium text-gray-500">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td colspan="6" class="p-8 text-center text-gray-500">Loading...</td>
-          </tr>
-          <tr v-else-if="filteredDrivers.length === 0">
-            <td colspan="6" class="p-8 text-center text-gray-500">No drivers found</td>
-          </tr>
-          <tr v-for="driver in filteredDrivers" :key="driver.id" class="border-b last:border-0 hover:bg-gray-50">
-            <td class="p-4">
-              <div class="font-medium text-gray-900">{{ driver.users?.full_name || driver.full_name }}</div>
-              <div class="text-sm text-gray-500">{{ driver.users?.email }}</div>
-            </td>
-            <td class="p-4 text-gray-600 font-mono">{{ driver.driver_license_number }}</td>
-            <td class="p-4">
-              <div class="flex items-center gap-2">
-                <span :class="[
-                  isLicenseExpired(driver.license_expiry_date) ? 'text-red-600' :
-                  isLicenseExpiringSoon(driver.license_expiry_date) ? 'text-yellow-600' : 'text-gray-600'
-                ]">
-                  {{ formatDateOnly(driver.license_expiry_date) }}
-                </span>
-                <AlertTriangle
-                  v-if="isLicenseExpired(driver.license_expiry_date) || isLicenseExpiringSoon(driver.license_expiry_date)"
-                  :class="[
-                    'h-4 w-4',
-                    isLicenseExpired(driver.license_expiry_date) ? 'text-red-500' : 'text-yellow-500'
-                  ]"
-                />
-              </div>
-            </td>
-            <td class="p-4">
-              <span v-if="driver.buses" class="text-gray-900">
-                {{ driver.buses.bus_number }} - {{ driver.buses.plate_number }}
-              </span>
-              <span v-else class="text-gray-400">Not assigned</span>
-            </td>
-            <td class="p-4">
-              <UiBadge :variant="driver.is_on_duty ? 'success' : 'secondary'">
-                {{ driver.is_on_duty ? 'On Duty' : 'Off Duty' }}
-              </UiBadge>
-            </td>
-            <td class="p-4">
-              <div class="flex items-center justify-end gap-2">
-                <UiButton
-                  v-if="driver.license_image_url"
-                  variant="ghost"
-                  size="sm"
-                  @click="openLicenseImageDialog(driver)"
-                  title="View License Image"
-                >
-                  <Eye class="h-4 w-4" />
-                </UiButton>
-                <UiButton variant="ghost" size="sm" @click="openEditDialog(driver)" title="Edit Driver">
-                  <Edit class="h-4 w-4" />
-                </UiButton>
-                <UiButton variant="outline" size="sm" @click="openAssignBusDialog(driver)">
-                  <BusIcon class="h-4 w-4 mr-1" />
-                  {{ driver.buses ? 'Change Bus' : 'Assign Bus' }}
-                </UiButton>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </UiTable>
-    </UiCard>
+    <!-- Drivers Table with Filters -->
+    <DriverTable
+      :drivers="filteredDrivers"
+      :loading="loading"
+      @assign-bus="openAssignBusDialog"
+      @view-license="openLicenseImageDialog"
+      @edit-driver="openEditDialog"
+    />
 
     <!-- Convert Passenger Dialog -->
     <UiDialog :open="showConvertDialog" title="Convert Passenger to Driver" @close="showConvertDialog = false">

@@ -161,70 +161,12 @@ onMounted(fetchUsers)
     </div>
 
     <!-- Users Table -->
-    <UiCard>
-      <UiTable>
-        <thead>
-          <tr class="border-b">
-            <th class="text-left p-4 font-medium text-gray-500">Name</th>
-            <th class="text-left p-4 font-medium text-gray-500">Email</th>
-            <th class="text-left p-4 font-medium text-gray-500">Role</th>
-            <th class="text-left p-4 font-medium text-gray-500">Status</th>
-            <th class="text-left p-4 font-medium text-gray-500">Created</th>
-            <th class="text-right p-4 font-medium text-gray-500">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td colspan="6" class="p-8 text-center text-gray-500">Loading...</td>
-          </tr>
-          <tr v-else-if="users.length === 0">
-            <td colspan="6" class="p-8 text-center text-gray-500">No users found</td>
-          </tr>
-          <tr v-for="user in users" :key="user.id" class="border-b last:border-0 hover:bg-gray-50">
-            <td class="p-4">
-              <div class="font-medium text-gray-900">{{ user.full_name }}</div>
-              <div class="text-sm text-gray-500">{{ user.phone_number || 'No phone' }}</div>
-            </td>
-            <td class="p-4 text-gray-600">{{ user.email }}</td>
-            <td class="p-4">
-              <UiBadge
-                :variant="user.role === 'admin' ? 'default' : user.role === 'driver' ? 'secondary' : 'outline'"
-              >
-                {{ user.role }}
-              </UiBadge>
-            </td>
-            <td class="p-4">
-              <UiBadge :variant="user.is_active ? 'success' : 'destructive'">
-                {{ user.is_active ? 'Active' : 'Disabled' }}
-              </UiBadge>
-            </td>
-            <td class="p-4 text-gray-600 text-sm">{{ formatDate(user.created_at) }}</td>
-            <td class="p-4">
-              <div class="flex items-center justify-end gap-2">
-                <UiButton
-                  v-if="user.role === 'passenger'"
-                  variant="outline"
-                  size="sm"
-                  @click="openTopUpDialog(user)"
-                >
-                  <DollarSign class="h-4 w-4 mr-1" />
-                  Top-up
-                </UiButton>
-                <UiButton
-                  :variant="user.is_active ? 'destructive' : 'success'"
-                  size="sm"
-                  @click="toggleUserStatus(user)"
-                >
-                  <Ban v-if="user.is_active" class="h-4 w-4 mr-1" />
-                  <UserCheck v-else class="h-4 w-4 mr-1" />
-                  {{ user.is_active ? 'Disable' : 'Enable' }}
-                </UiButton>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </UiTable>
-    </UiCard>
+    <UserTable
+      :users="users"
+      :loading="loading"
+      @toggle-status="toggleUserStatus"
+      @open-topup="openTopUpDialog"
+    />
 
     <!-- Top-up Dialog -->
     <UiDialog :open="showTopUpDialog" title="Top-up Balance" @close="showTopUpDialog = false">
