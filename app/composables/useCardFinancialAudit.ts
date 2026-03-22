@@ -47,27 +47,31 @@ export interface CardFinancialAuditResponse {
   }
 }
 
+const defaultCardFinancialAuditResponse: CardFinancialAuditResponse = {
+  avgTripCost: 15,
+  dormantCapital: [],
+  lowBalanceSingleUse: [],
+  highValueAssets: [],
+  charts: {
+    cardTypeDistribution: [],
+    balanceByDiscount: []
+  },
+  recommendations: {
+    toastMessage: null,
+    twoFactorSuggested: false
+  }
+}
+
 export const useCardFinancialAudit = () => {
   const { data, pending, error, refresh } = useFetch<CardFinancialAuditResponse>('/api/cards/financial-audit', {
     key: 'card-financial-audit',
-    default: () => ({
-      avgTripCost: 15,
-      dormantCapital: [],
-      lowBalanceSingleUse: [],
-      highValueAssets: [],
-      charts: {
-        cardTypeDistribution: [],
-        balanceByDiscount: []
-      },
-      recommendations: {
-        toastMessage: null,
-        twoFactorSuggested: false
-      }
-    })
+    default: () => defaultCardFinancialAuditResponse
   })
 
+  const safeData = computed(() => data.value || defaultCardFinancialAuditResponse)
+
   return {
-    audit: computed(() => data.value),
+    audit: safeData,
     pending,
     error,
     refresh

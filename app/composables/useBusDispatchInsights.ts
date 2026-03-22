@@ -51,33 +51,37 @@ export interface BusDispatchInsightsResponse {
   }
 }
 
+const defaultBusDispatchInsightsResponse: BusDispatchInsightsResponse = {
+  maintenanceLogsAvailable: false,
+  summary: {
+    active: 0,
+    inactive: 0,
+    maintenance: 0,
+    total: 0
+  },
+  recommendation: null,
+  fleet: [],
+  charts: {
+    utilization: {
+      active: 0,
+      inactive: 0,
+      maintenance: 0,
+      total: 0
+    },
+    revenuePerBus: []
+  }
+}
+
 export const useBusDispatchInsights = () => {
   const { data, pending, error, refresh } = useFetch<BusDispatchInsightsResponse>('/api/buses/dispatcher-insights', {
     key: 'bus-dispatch-insights',
-    default: () => ({
-      maintenanceLogsAvailable: false,
-      summary: {
-        active: 0,
-        inactive: 0,
-        maintenance: 0,
-        total: 0
-      },
-      recommendation: null,
-      fleet: [],
-      charts: {
-        utilization: {
-          active: 0,
-          inactive: 0,
-          maintenance: 0,
-          total: 0
-        },
-        revenuePerBus: []
-      }
-    })
+    default: () => defaultBusDispatchInsightsResponse
   })
 
+  const safeData = computed(() => data.value || defaultBusDispatchInsightsResponse)
+
   return {
-    insights: computed(() => data.value),
+    insights: safeData,
     pending,
     error,
     refresh
