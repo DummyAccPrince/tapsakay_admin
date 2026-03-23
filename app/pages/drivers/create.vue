@@ -14,7 +14,9 @@ const errorMessage = ref('')
 const successMessage = ref('')
 
 const formData = ref({
-  full_name: '',
+  first_name: '',
+  middle_name: '',
+  last_name: '',
   email: '',
   phone_number: '',
   password: '',
@@ -93,9 +95,21 @@ const hashPassword = async (password: string): Promise<string> => {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+const buildFullName = () => {
+  return [
+    formData.value.first_name.trim(),
+    formData.value.middle_name.trim(),
+    formData.value.last_name.trim()
+  ].filter(Boolean).join(' ')
+}
+
 const validateForm = (): boolean => {
-  if (!formData.value.full_name.trim()) {
-    errorMessage.value = 'Full name is required'
+  if (!formData.value.first_name.trim()) {
+    errorMessage.value = 'First name is required'
+    return false
+  }
+  if (!formData.value.last_name.trim()) {
+    errorMessage.value = 'Last name is required'
     return false
   }
   if (!formData.value.email.trim()) {
@@ -133,6 +147,8 @@ const createDriver = async () => {
   
   loading.value = true
   try {
+    const fullName = buildFullName()
+
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
@@ -165,7 +181,7 @@ const createDriver = async () => {
         email: formData.value.email.toLowerCase().trim(),
         password_hash: passwordHash,
         role: 'driver',
-        full_name: formData.value.full_name.trim(),
+        full_name: fullName,
         phone_number: formData.value.phone_number.trim() || null,
         is_active: true
       })
@@ -189,7 +205,7 @@ const createDriver = async () => {
         id: newUser.id,
         driver_license_number: formData.value.license_number.trim(),
         license_expiry_date: formData.value.license_expiry,
-        full_name: formData.value.full_name.trim(),
+        full_name: fullName,
         license_image_url: licenseImageUrl
       })
     
@@ -253,13 +269,35 @@ onUnmounted(() => {
           </h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="md:col-span-2">
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Full Name <span class="text-red-500">*</span>
+                First Name <span class="text-red-500">*</span>
               </label>
               <UiInput
-                v-model="formData.full_name"
-                placeholder="Enter full name"
+                v-model="formData.first_name"
+                placeholder="Enter first name"
+                :disabled="loading"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Last Name <span class="text-red-500">*</span>
+              </label>
+              <UiInput
+                v-model="formData.last_name"
+                placeholder="Enter last name"
+                :disabled="loading"
+              />
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Middle Name
+              </label>
+              <UiInput
+                v-model="formData.middle_name"
+                placeholder="Enter middle name (optional)"
                 :disabled="loading"
               />
             </div>
